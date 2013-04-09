@@ -1,7 +1,7 @@
 /****************************************************************************
 ** Meta object code from reading C++ file 'opensf.h'
 **
-** Created: Tue Apr 2 14:19:04 2013
+** Created: Tue Apr 9 16:41:16 2013
 **      by: The Qt Meta Object Compiler version 63 (Qt 4.8.1)
 **
 ** WARNING! All changes made in this file will be lost!
@@ -23,26 +23,39 @@ static const uint qt_meta_data_OpenSF[] = {
        6,       // revision
        0,       // classname
        0,    0, // classinfo
-       0,    0, // methods
+       3,   14, // methods
        0,    0, // properties
        0,    0, // enums/sets
        0,    0, // constructors
        0,       // flags
        0,       // signalCount
 
+ // slots: signature, parameters, type, tag, flags
+      20,   12,    8,    7, 0x0a,
+      33,    7,    7,    7, 0x08,
+      45,    7,    7,    7, 0x08,
+
        0        // eod
 };
 
 static const char qt_meta_stringdata_OpenSF[] = {
-    "OpenSF\0"
+    "OpenSF\0\0int\0pkt_num\0display(int)\0"
+    "start_cap()\0stop_cap()\0"
 };
 
 void OpenSF::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void **_a)
 {
-    Q_UNUSED(_o);
-    Q_UNUSED(_id);
-    Q_UNUSED(_c);
-    Q_UNUSED(_a);
+    if (_c == QMetaObject::InvokeMetaMethod) {
+        Q_ASSERT(staticMetaObject.cast(_o));
+        OpenSF *_t = static_cast<OpenSF *>(_o);
+        switch (_id) {
+        case 0: { int _r = _t->display((*reinterpret_cast< int(*)>(_a[1])));
+            if (_a[0]) *reinterpret_cast< int*>(_a[0]) = _r; }  break;
+        case 1: _t->start_cap(); break;
+        case 2: _t->stop_cap(); break;
+        default: ;
+        }
+    }
 }
 
 const QMetaObjectExtraData OpenSF::staticMetaObjectExtraData = {
@@ -76,6 +89,11 @@ int OpenSF::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     _id = QMainWindow::qt_metacall(_c, _id, _a);
     if (_id < 0)
         return _id;
+    if (_c == QMetaObject::InvokeMetaMethod) {
+        if (_id < 3)
+            qt_static_metacall(this, _c, _id, _a);
+        _id -= 3;
+    }
     return _id;
 }
 QT_END_MOC_NAMESPACE

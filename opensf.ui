@@ -19,214 +19,58 @@
      <rect>
       <x>0</x>
       <y>0</y>
-      <width>741</width>
-      <height>501</height>
+      <width>751</width>
+      <height>511</height>
      </rect>
     </property>
     <property name="orientation">
      <enum>Qt::Vertical</enum>
     </property>
-    <widget class="QScrollArea" name="scrollArea">
-     <property name="widgetResizable">
-      <bool>true</bool>
-     </property>
-     <widget class="QWidget" name="scrollAreaWidgetContents">
-      <property name="geometry">
-       <rect>
-        <x>0</x>
-        <y>0</y>
-        <width>739</width>
-        <height>210</height>
-       </rect>
+    <widget class="QTableWidget" name="tableWidget">
+     <column>
+      <property name="text">
+       <string>No.</string>
       </property>
-      <widget class="QTableWidget" name="tableWidget">
-       <property name="geometry">
-        <rect>
-         <x>0</x>
-         <y>0</y>
-         <width>741</width>
-         <height>211</height>
-        </rect>
-       </property>
-       <row>
-        <property name="text">
-         <string>1</string>
-        </property>
-       </row>
-       <column>
-        <property name="text">
-         <string>No.</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>Time</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>Source</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>Destination</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>Protocol</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>Length</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>Info</string>
-        </property>
-       </column>
-      </widget>
-     </widget>
-    </widget>
-    <widget class="QScrollArea" name="scrollArea_2">
-     <property name="widgetResizable">
-      <bool>true</bool>
-     </property>
-     <widget class="QWidget" name="scrollAreaWidgetContents_2">
-      <property name="geometry">
-       <rect>
-        <x>0</x>
-        <y>0</y>
-        <width>739</width>
-        <height>161</height>
-       </rect>
+     </column>
+     <column>
+      <property name="text">
+       <string>Time</string>
       </property>
-      <widget class="QTreeWidget" name="treeWidget">
-       <property name="geometry">
-        <rect>
-         <x>0</x>
-         <y>0</y>
-         <width>741</width>
-         <height>161</height>
-        </rect>
-       </property>
-       <column>
-        <property name="text">
-         <string>Key</string>
-        </property>
-       </column>
-       <column>
-        <property name="text">
-         <string>Value</string>
-        </property>
-       </column>
-       <item>
-        <property name="text">
-         <string>Frame</string>
-        </property>
-        <item>
-         <property name="text">
-          <string>Arrive time</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>Frame Number</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>Frame Length</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>Capture Length</string>
-         </property>
-         <property name="text">
-          <string/>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>Protocol in frame</string>
-         </property>
-         <property name="text">
-          <string/>
-         </property>
-        </item>
-       </item>
-       <item>
-        <property name="text">
-         <string>Ethernet</string>
-        </property>
-        <item>
-         <property name="text">
-          <string>Destination</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>Source</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>Type</string>
-         </property>
-        </item>
-       </item>
-       <item>
-        <property name="text">
-         <string>IP</string>
-        </property>
-        <item>
-         <property name="text">
-          <string>Version</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>Header Length</string>
-         </property>
-        </item>
-       </item>
-       <item>
-        <property name="text">
-         <string>TCP</string>
-        </property>
-       </item>
-      </widget>
-     </widget>
-    </widget>
-    <widget class="QScrollArea" name="scrollArea_3">
-     <property name="widgetResizable">
-      <bool>true</bool>
-     </property>
-     <widget class="QWidget" name="scrollAreaWidgetContents_3">
-      <property name="geometry">
-       <rect>
-        <x>0</x>
-        <y>0</y>
-        <width>739</width>
-        <height>114</height>
-       </rect>
+     </column>
+     <column>
+      <property name="text">
+       <string>Source</string>
       </property>
-      <widget class="QPlainTextEdit" name="plainTextEdit">
-       <property name="geometry">
-        <rect>
-         <x>0</x>
-         <y>0</y>
-         <width>531</width>
-         <height>111</height>
-        </rect>
-       </property>
-      </widget>
-     </widget>
+     </column>
+     <column>
+      <property name="text">
+       <string>Destination</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Protocol</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Length</string>
+      </property>
+     </column>
+     <column>
+      <property name="text">
+       <string>Info</string>
+      </property>
+     </column>
     </widget>
+    <widget class="QTreeWidget" name="treeWidget">
+     <column>
+      <property name="text">
+       <string notr="true">1</string>
+      </property>
+     </column>
+    </widget>
+    <widget class="QTextEdit" name="textEdit"/>
    </widget>
   </widget>
   <widget class="QMenuBar" name="menuBar">
