@@ -21,6 +21,7 @@ public:
 	OpenSF(QWidget *parent = 0, Qt::WFlags flags = 0);
 	int find_devs();
 	~OpenSF();
+	friend class cap_thread;
 
 	public slots:
 		int display(int pkt_num);
@@ -45,6 +46,7 @@ private:
 	int dev_num;
 	// vector<pkt_info>::iterator iter
 	vector<pkt_info>::size_type index;
+
 
 	private slots:
 		void start_cap();

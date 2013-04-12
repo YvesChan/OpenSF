@@ -27,6 +27,9 @@
      <enum>Qt::Vertical</enum>
     </property>
     <widget class="QTableWidget" name="tableWidget">
+     <attribute name="verticalHeaderDefaultSectionSize">
+      <number>25</number>
+     </attribute>
      <column>
       <property name="text">
        <string>No.</string>
@@ -64,6 +67,9 @@
      </column>
     </widget>
     <widget class="QTreeWidget" name="treeWidget">
+     <attribute name="headerVisible">
+      <bool>false</bool>
+     </attribute>
      <column>
       <property name="text">
        <string notr="true">1</string>

@@ -26,6 +26,7 @@ int cap_thread::pkt_cap()
 	struct tm *ltime;
 	time_t time;
 	char timestr[16];
+
 	int res;
 	int i = 1;   // start from 1
 	int pkt_num = 0;   // packet's number
@@ -46,25 +47,51 @@ int cap_thread::pkt_cap()
 		}
 
 		if(res == 0){
-            continue;   // time out
+			continue;   // time out
 		}
-
-		struct pkt_info pkt;
 		
 		time = header->ts.tv_sec;
 		ltime = localtime(&time);
 		strftime(timestr, sizeof(timestr), "%H:%M:%S", ltime);
-		printf("->pkt_num: %s,%.6d  len:%d\n", timestr, header->ts.tv_usec, header->len);
-		
+		printf("%d: %s,%.6d  len:%d \n", pkt_num, timestr, header->ts.tv_usec, header->len);
+
+		struct pkt_info pkt;
+		strcpy(pkt.timestr, timestr);
 		pkt.ms = header->ts.tv_usec;
 		pkt.caplen = header->caplen;
 		pkt.len = header->len;
 
-		memcpy(pkt.pkt_data, pkt_data, strlen((char *)pkt_data));
+		memcpy(pkt.pkt_data, pkt_data, pkt.caplen + 1);
 
 		pkts->push_back(pkt);
-		emit cap(pkt_num);
+		emit cap(pkt_num);    // test vector
 		pkt_num ++;
+
+
+		//mac_header *mh = (mac_header *)pkt_data;
+		//ip_header *ih = (ip_header *)(pkt_data + 14);
+		//u_short ftype = ntohs(mh->type);
+
+		//switch(ftype){     // EtherType, see more:http://en.wikipedia.org/wiki/Ethertype
+		//case 0x0806:     // ARP packet
+		//	printf("ARP\n");
+		//	break;
+		//case 0x0800:     // IPv4 packet
+		//	printf("type:%d ", ih->proto);
+		//	if((ih->proto ^ 0x06) == 0){
+		//		printf("TCP :");
+		//	}
+		//	else if((ih->proto ^ 0x11) == 0){
+		//		printf("UDP :");
+		//	}
+		//	else printf("Unknown :");
+		//	
+		//	printf("      src:%d.%d.%d.%d ", ih->saddr.byte1, ih->saddr.byte2, ih->saddr.byte3, ih->saddr.byte4);
+		//	printf("dst:%d.%d.%d.%d \n", ih->daddr.byte1, ih->daddr.byte2, ih->daddr.byte3, ih->daddr.byte4);
+		//	break;
+		//default:
+		//	printf("Unknown\n");
+		//}
 	}
     
     if(res == -1){

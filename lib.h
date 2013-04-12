@@ -1,14 +1,15 @@
 #ifndef LIB_H
 #define LIB_H
 
+
 // data structure definition
-typedef struct pkt_info{
-	char timestr[16];
+struct pkt_info{
+	char timestr[18];      // here note to be a little bigger
 	int ms;
 	unsigned int caplen;          // actualy capture length
 	unsigned int len;             // what it should be 
 	u_char pkt_data[1514];            // the max length of Ethernet frame
-}pkt_info;
+};
 
 /* 14 bytes MAC address */
 typedef struct mac_header{

@@ -1,7 +1,7 @@
 /********************************************************************************
 ** Form generated from reading UI file 'opensf.ui'
 **
-** Created: Tue Apr 9 16:41:16 2013
+** Created: Thu Apr 11 22:16:44 2013
 **      by: Qt User Interface Compiler version 4.8.1
 **
 ** WARNING! All changes made in this file will be lost when recompiling UI file!
@@ -69,6 +69,7 @@ public:
         tableWidget->setHorizontalHeaderItem(6, __qtablewidgetitem6);
         tableWidget->setObjectName(QString::fromUtf8("tableWidget"));
         splitter->addWidget(tableWidget);
+        tableWidget->verticalHeader()->setDefaultSectionSize(25);
         treeWidget = new QTreeWidget(splitter);
         QTreeWidgetItem *__qtreewidgetitem = new QTreeWidgetItem();
         __qtreewidgetitem->setText(0, QString::fromUtf8("1"));
