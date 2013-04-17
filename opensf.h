@@ -20,11 +20,16 @@ class OpenSF : public QMainWindow
 public:
 	OpenSF(QWidget *parent = 0, Qt::WFlags flags = 0);
 	int find_devs();
+	QStringList * prase_mac(mac_header *mh);
+	QStringList * prase_ip(ip_header *ih);
+	QStringList * prase_tcp(tcp_header *th);
+	QStringList * prase_udp(udp_header *uh);
+	void judge_proto(int port, char *str, char *def);
 	~OpenSF();
-	friend class cap_thread;
+	// friend class cap_thread;
 
 	public slots:
-		int display(int pkt_num);
+		void display(int pkt_num);
 
 private:
 	Ui::OpenSFClass ui;
@@ -36,6 +41,7 @@ private:
 	QAction *act_apply;
 	QAction *act_clear;
 	cap_thread *capture;
+	QThread *thread_mgr;
 
 	pcap_if_t *alldevs;        // device list
 	pcap_if_t *d;
@@ -51,6 +57,7 @@ private:
 	private slots:
 		void start_cap();
 		void stop_cap();
+		void show_pkt(int row);
 
 };
 

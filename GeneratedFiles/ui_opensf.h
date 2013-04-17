@@ -1,7 +1,7 @@
 /********************************************************************************
 ** Form generated from reading UI file 'opensf.ui'
 **
-** Created: Thu Apr 11 22:16:44 2013
+** Created: Wed Apr 17 23:31:58 2013
 **      by: Qt User Interface Compiler version 4.8.1
 **
 ** WARNING! All changes made in this file will be lost when recompiling UI file!
@@ -43,7 +43,7 @@ public:
     {
         if (OpenSFClass->objectName().isEmpty())
             OpenSFClass->setObjectName(QString::fromUtf8("OpenSFClass"));
-        OpenSFClass->resize(746, 562);
+        OpenSFClass->resize(750, 562);
         centralWidget = new QWidget(OpenSFClass);
         centralWidget->setObjectName(QString::fromUtf8("centralWidget"));
         splitter = new QSplitter(centralWidget);
@@ -76,13 +76,14 @@ public:
         treeWidget->setHeaderItem(__qtreewidgetitem);
         treeWidget->setObjectName(QString::fromUtf8("treeWidget"));
         splitter->addWidget(treeWidget);
+        treeWidget->header()->setVisible(false);
         textEdit = new QTextEdit(splitter);
         textEdit->setObjectName(QString::fromUtf8("textEdit"));
         splitter->addWidget(textEdit);
         OpenSFClass->setCentralWidget(centralWidget);
         menuBar = new QMenuBar(OpenSFClass);
         menuBar->setObjectName(QString::fromUtf8("menuBar"));
-        menuBar->setGeometry(QRect(0, 0, 746, 23));
+        menuBar->setGeometry(QRect(0, 0, 750, 23));
         OpenSFClass->setMenuBar(menuBar);
         statusBar = new QStatusBar(OpenSFClass);
         statusBar->setObjectName(QString::fromUtf8("statusBar"));

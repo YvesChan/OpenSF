@@ -17,6 +17,7 @@ class cap_thread : public QObject
 
 public:
 	cap_thread(pcap_if_t *alldevs, int d_num);
+	~cap_thread();
 	vector<pkt_info> * get_pkt_list();
 	void set_status(bool val);
 
@@ -27,10 +28,10 @@ signals:
 		void cap(int);
 
 private:
-	pcap_if_t *dev_list;
+	pcap_if_t *dev_list;      // devices list passed by main thread
 	pcap_t *adhandle;         // pcap instance
-	int dev_num;
-	vector<pkt_info> *pkts;
+	int dev_num;          // current selected dev's index number
+	vector<pkt_info> *pkts;    // packet container
 	bool status;
 
 };

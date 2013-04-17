@@ -66,32 +66,6 @@ int cap_thread::pkt_cap()
 		pkts->push_back(pkt);
 		emit cap(pkt_num);    // test vector
 		pkt_num ++;
-
-
-		//mac_header *mh = (mac_header *)pkt_data;
-		//ip_header *ih = (ip_header *)(pkt_data + 14);
-		//u_short ftype = ntohs(mh->type);
-
-		//switch(ftype){     // EtherType, see more:http://en.wikipedia.org/wiki/Ethertype
-		//case 0x0806:     // ARP packet
-		//	printf("ARP\n");
-		//	break;
-		//case 0x0800:     // IPv4 packet
-		//	printf("type:%d ", ih->proto);
-		//	if((ih->proto ^ 0x06) == 0){
-		//		printf("TCP :");
-		//	}
-		//	else if((ih->proto ^ 0x11) == 0){
-		//		printf("UDP :");
-		//	}
-		//	else printf("Unknown :");
-		//	
-		//	printf("      src:%d.%d.%d.%d ", ih->saddr.byte1, ih->saddr.byte2, ih->saddr.byte3, ih->saddr.byte4);
-		//	printf("dst:%d.%d.%d.%d \n", ih->daddr.byte1, ih->daddr.byte2, ih->daddr.byte3, ih->daddr.byte4);
-		//	break;
-		//default:
-		//	printf("Unknown\n");
-		//}
 	}
     
     if(res == -1){
@@ -100,4 +74,9 @@ int cap_thread::pkt_cap()
     }
 
 	return pkt_num;
+}
+
+cap_thread::~cap_thread()
+{
+	delete pkts;
 }
