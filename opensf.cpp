@@ -75,10 +75,39 @@ OpenSF::OpenSF(QWidget *parent, Qt::WFlags flags)
 	connect(act_start, SIGNAL(triggered()), this, SLOT(start_cap()));
 	connect(act_stop, SIGNAL(triggered()), this, SLOT(stop_cap()));
 	connect(ui.tableWidget, SIGNAL(cellClicked(int, int)), this, SLOT(show_pkt(int)));
+	connect(combo_box_filter, SIGNAL(editTextChanged(const QString &)), this, SLOT(check_filter()));
+	connect(act_apply, SIGNAL(triggered()), this, SLOT(apply_filter()));
+	connect(act_clear, SIGNAL(triggered()), this, SLOT(clear_filter()));
 
 
 	thread_mgr = new QThread(this);
 	index = 0;    // pkt_num index initial 
+}
+
+void OpenSF::check_filter()
+{
+	// TODO: check syntax
+	act_apply->setEnabled(true);
+}
+
+void OpenSF::apply_filter()
+{
+	if(combo_box_filter->currentText().size() >= 100){
+		QMessageBox::information(this, "OpenSF", "Filter string too long(at most 100 characters)");
+		return;
+	}
+
+	filter = combo_box_filter->currentText();
+	combo_box_filter->clearFocus();
+	act_apply->setDisabled(true);
+	act_clear->setEnabled(true);
+}
+
+void OpenSF::clear_filter()
+{
+	filter.clear();
+	combo_box_filter->clearEditText();
+	act_clear->setDisabled(true);
 }
 
 // find devices and display
@@ -144,6 +173,7 @@ void OpenSF::start_cap()
 
 	capture = new cap_thread(alldevs, dev_num);
 	capture->set_status(true);
+	capture->set_filter(filter.toLatin1().data());
 	pkts = capture->get_pkt_list();     // get pkt_list address
 
 	QObject::connect(thread_mgr, SIGNAL(started()), capture, SLOT(pkt_cap()));
@@ -235,6 +265,7 @@ void OpenSF::display(int pkt_num)
 			}
 			else pro = "Unknown";
 			
+			cout << flush;
 			src.sprintf("%d.%d.%d.%d", ih->saddr.byte1, ih->saddr.byte2, ih->saddr.byte3, ih->saddr.byte4);
 			dst.sprintf("%d.%d.%d.%d", ih->daddr.byte1, ih->daddr.byte2, ih->daddr.byte3, ih->daddr.byte4);
 			// printf("      src:%d.%d.%d.%d ", ih->saddr.byte1, ih->saddr.byte2, ih->saddr.byte3, ih->saddr.byte4);
@@ -276,44 +307,27 @@ void OpenSF::show_pkt(int row)
 	}
 
 	index = (vector<pkt_info>::size_type)row;
-	QStringList *mac;
-	QStringList *ip;
-	QStringList *tcp;
-	QStringList *udp;
 	QTreeWidgetItem *dll;		// data link layer
 	QTreeWidgetItem *nl;		// network layer
 	QTreeWidgetItem *tl;		// transport layer
 	QTreeWidgetItem *payload;	// datagram payload
 
-	// get mac header
+	// show mac header and apr info(if exist)
 	mac_header *mh = (mac_header *)(*pkts)[index].pkt_data;
-	mac = prase_mac(mh);
-
-	dll = new QTreeWidgetItem(ui.treeWidget, QStringList(QString("Data Link Layer")));
-	for(int i = 0; i < mac->size(); i ++){
-		dll->addChild(new QTreeWidgetItem(dll, QStringList(mac->at(i))));
-	}
+	dll = prase_mac(mh);
 	ui.treeWidget->insertTopLevelItem(0, dll);
-
-	delete mac;
 	if(ntohs(mh->type) == 0x0806){
-		// TO DO
-		// print payload
+		arp_payload *ap = (arp_payload *)((u_char *)mh + 14);
+		payload = prase_arp(ap);
+		ui.treeWidget->insertTopLevelItem(1, payload);
 		return;
 	}
 
-	// get ip header
-	ip_header *ih = (ip_header *)((u_char*)mh + 14);   // get ip header position
-	ip = prase_ip(ih);
-
-	nl = new QTreeWidgetItem(ui.treeWidget, QStringList(QString("Network Layer")));
-	for(int i = 0; i < ip->size(); i ++){
-		nl->addChild(new QTreeWidgetItem(nl, QStringList(ip->at(i))));
-	}
+	// show ip header info
+	ip_header *ih = (ip_header *)((u_char*)mh + 14);
+	nl = prase_ip(ih);
 	ui.treeWidget->insertTopLevelItem(1, nl);
-
-	delete ip;
-	if(ih->proto == 1 || ih->proto == 2){
+	if(ih->proto == 1 || ih->proto == 2){    // ICMP & IGMP 
 		// TO DO
 		return;
 	}
@@ -321,41 +335,27 @@ void OpenSF::show_pkt(int row)
 	// get tcp/udp header 
 	if(ih->proto == 6){     // TCP
 		tcp_header *th = (tcp_header *)((unsigned char *)ih + (ih->ver_ihl & 0xf) * 4);
-		tcp = prase_tcp(th);
-
-		tl = new QTreeWidgetItem(ui.treeWidget, QStringList(QString("Transport Layer")));
-		for(int i = 0; i < tcp->size(); i ++){
-			tl->addChild(new QTreeWidgetItem(tl, QStringList(tcp->at(i))));
-		}
+		tl = prase_tcp(th);
 		ui.treeWidget->insertTopLevelItem(2, tl);
-
-		delete tcp;
 	}
 	else if(ih->proto == 17){    // UDP
 		udp_header *uh = (udp_header *)((unsigned char *)ih + (ih->ver_ihl & 0xf) * 4);
-		udp = prase_udp(uh);
-
-		tl = new QTreeWidgetItem(ui.treeWidget, QStringList(QString("Transport Layer")));
-		for(int i = 0; i < udp->size(); i ++){
-			tl->addChild(new QTreeWidgetItem(tl, QStringList(udp->at(i))));
-		}
+		tl = prase_udp(uh);
 		ui.treeWidget->insertTopLevelItem(2, tl);
-
-		delete udp;
 	}
 
 }
 
-QStringList * OpenSF::prase_mac(mac_header *mh)
+QTreeWidgetItem * OpenSF::prase_mac(mac_header *mh)
 {
-	QStringList *ret = new QStringList();
+	QTreeWidgetItem *ret = new QTreeWidgetItem(ui.treeWidget);
 	u_short ftype = ntohs(mh->type);
 	QString src;
 	QString dst;
 	QString pro;
 
-	src.sprintf("Source: %02X-%02X-%02X-%02X-%02X-%02X", mh->src[0], mh->src[1], mh->src[2], mh->src[3], mh->src[4], mh->src[5]);
-	dst.sprintf("Destination: %02X-%02X-%02X-%02X-%02X-%02X", mh->dst[0], mh->dst[1], mh->dst[2], mh->dst[3], mh->dst[4], mh->dst[5]);
+	src.sprintf("%02X-%02X-%02X-%02X-%02X-%02X", mh->src[0], mh->src[1], mh->src[2], mh->src[3], mh->src[4], mh->src[5]);
+	dst.sprintf("%02X-%02X-%02X-%02X-%02X-%02X", mh->dst[0], mh->dst[1], mh->dst[2], mh->dst[3], mh->dst[4], mh->dst[5]);
 	pro.sprintf("Type: %04X", ftype);
 	switch(ftype){
 		case 0x0800:
@@ -371,31 +371,38 @@ QStringList * OpenSF::prase_mac(mac_header *mh)
 			pro += " (Unknown)";
 	}
 
-	*ret << dst << src << pro;   // add info to return list
+	// add info to return list
+	ret->setText(0, "Data Link Layer  --  Src: " + src + ", Dst: " + dst);
+	ret->addChild(new QTreeWidgetItem(ret, QStringList("Destination: " + dst)));
+	ret->addChild(new QTreeWidgetItem(ret, QStringList("Source: " + src)));
+	ret->addChild(new QTreeWidgetItem(ret, QStringList(pro)));
 	return ret;
 }
 
-QStringList * OpenSF::prase_ip(ip_header *ih)
+QTreeWidgetItem * OpenSF::prase_ip(ip_header *ih)
 {
-	QStringList *ret = new QStringList();
+	QTreeWidgetItem *ret = new QTreeWidgetItem(ui.treeWidget);
+	QString src;
+	QString dst;
 	QString tmp;
 	unsigned short tshort;
 
+	// ip version & header length
 	if((ih->ver_ihl & 0xf0) == 0x40){
-		*ret << "Version : 4";
+		ret->addChild(new QTreeWidgetItem(ret, QStringList(QString("Version : 4"))));
 	}
 	tmp.sprintf("Header Length: %d Bytes", (ih->ver_ihl & 0xf) * 4);
-	*ret << tmp;
+	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
 
 	// first 6 bits are service class, the other 2 bits are ECN info
 	tmp.sprintf("Differentiated Services: %02X", ih->tos);
-	*ret << tmp;
+	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
 
 	tmp.sprintf("Total Length: %d Bytes", ntohs(ih->tlen));
-	*ret << tmp;
+	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
 
 	tmp.sprintf("Identification: %02X", ntohs(ih->identification));
-	*ret << tmp;
+	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
 
 	// first 1 bit reserved, remain 2 bits are DF & MF
 	tshort = (ih->flags_fo & 0xe000) >> 13;
@@ -406,16 +413,16 @@ QStringList * OpenSF::prase_ip(ip_header *ih)
 	if(tshort == 2){
 		tmp += " (Don't Fragment)";
 	}
-	*ret << tmp;
+	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
 
 	// offset
 	tshort = ih->flags_fo & 0x1fff;
 	tmp.sprintf("Fragment Offset: %d", tshort);
-	*ret << tmp;
+	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
 
 	// ttl
-	tmp.sprintf("Time to live: %d", ih->ttl);
-	*ret << tmp;
+	tmp.sprintf("Time to live: %u", ih->ttl);
+	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
 
 	// protoco;l
 	tmp.sprintf("Protocol: 0x%02X ", ih->proto);
@@ -433,24 +440,25 @@ QStringList * OpenSF::prase_ip(ip_header *ih)
 			tmp += "(UDP)";
 			break;
 	}
-	*ret << tmp;
+	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
 
 	// ip checksum
 	tmp.sprintf("Header Checksum: 0x%02X", ih->crc);
-	*ret << tmp;
+	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
 
 	// src & dst address
-	tmp.sprintf("Source: %d.%d.%d.%d", ih->saddr.byte1, ih->saddr.byte2, ih->saddr.byte3, ih->saddr.byte4);
-	*ret << tmp;
-	tmp.sprintf("Destination: %d.%d.%d.%d", ih->daddr.byte1, ih->daddr.byte2, ih->daddr.byte3, ih->daddr.byte4);
-	*ret << tmp;
+	src.sprintf("%d.%d.%d.%d", ih->saddr.byte1, ih->saddr.byte2, ih->saddr.byte3, ih->saddr.byte4);
+	ret->addChild(new QTreeWidgetItem(ret, QStringList("Source: " + src)));
+	dst.sprintf("%d.%d.%d.%d", ih->daddr.byte1, ih->daddr.byte2, ih->daddr.byte3, ih->daddr.byte4);
+	ret->addChild(new QTreeWidgetItem(ret, QStringList("Destination: " + dst)));
 
+	ret->setText(0, "Network Layer  --  Src: " + src + ", Dst: " + dst);
 	return ret;
 }
 
-QStringList * OpenSF::prase_tcp(tcp_header *th)
+QTreeWidgetItem * OpenSF::prase_tcp(tcp_header *th)
 {
-	QStringList *ret = new QStringList();
+	QTreeWidgetItem *ret = new QTreeWidgetItem(ui.treeWidget);
 	QString tmp;
 	QString pro;
 	unsigned short tshort;
@@ -460,43 +468,44 @@ QStringList * OpenSF::prase_tcp(tcp_header *th)
 	judge_proto(tshort, &pro, "Undefine");
 	tmp.sprintf("Source port: %d ", tshort);
 	tmp += "(" + pro + ")";
-	*ret << tmp;
+	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
 	tshort = ntohs(th->dport);
 	judge_proto(tshort, &pro, "Undefine");
 	tmp.sprintf("Destination port: %d ", tshort);
 	tmp += "(" + pro + ")";
-	*ret << tmp;
+	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
 
 	// seq number & ack num
 	tmp.sprintf("Sequence number: %u", ntohl(th->seqnum));
-	*ret << tmp;
+	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
 	tmp.sprintf("Acknowledge number: %u", ntohl(th->acknum));
-	*ret << tmp;
+	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
 
 	// tcp header length: (4 bits)
 	tshort = (th->hl_flag & 0xf000) >> 12;
 	tmp.sprintf("Header length: %d Bytes", tshort * 4);
-	*ret << tmp;
+	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
 
 	// flags
 	tshort = th->hl_flag & 0x00ff;
 	tmp.sprintf("Flags: 0x%02X", tshort);
-	*ret << tmp;
+	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
 
 	// window size
 	tmp.sprintf("Window size: %d", ntohs(th->wsize));
-	*ret << tmp;
+	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
 
 	// checksum
 	tmp.sprintf("Checksum: 0x%d", ntohs(th->crc));
-	*ret << tmp;
+	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
 
+	ret->setText(0, "Transport Layer  --  TCP");
 	return ret;
 }
 
-QStringList * OpenSF::prase_udp(udp_header *uh)
+QTreeWidgetItem * OpenSF::prase_udp(udp_header *uh)
 {
-	QStringList *ret = new QStringList();
+	QTreeWidgetItem *ret = new QTreeWidgetItem(ui.treeWidget);
 	QString tmp;
 	QString pro;
 	unsigned short tshort;
@@ -506,19 +515,65 @@ QStringList * OpenSF::prase_udp(udp_header *uh)
 	judge_proto(tshort, &pro, "Undefine");
 	tmp.sprintf("Source port: %d ", tshort);
 	tmp += "(" + pro + ")";
-	*ret << tmp;
+	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
 	tshort = ntohs(uh->dport);
 	judge_proto(tshort, &pro, "Undefine");
 	tmp.sprintf("Destination port: %d ", tshort);
 	tmp += "(" + pro + ")";
-	*ret << tmp;
+	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
 
 	// Length & checksum
 	tmp.sprintf("Length: %d", ntohs(uh->len));
-	*ret << tmp;
+	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
 	tmp.sprintf("Checksum: 0x%04X", uh->crc);
-	*ret << tmp;
+	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
 
+	ret->setText(0, "Transport Layer  --  UDP");
+	return ret;
+}
+
+QTreeWidgetItem * OpenSF::prase_arp(arp_payload *ap)
+{
+	QTreeWidgetItem *ret = new QTreeWidgetItem(ui.treeWidget);
+	QString opcode;
+	QString tmp;
+	
+	// hardware type & protocol type (2 + 2)Bytes
+	tmp.sprintf("Hardware type: %d", ntohs(ap->hardware));
+	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
+	tmp.sprintf("Protocol type: %d", ntohs(ap->proto));
+	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
+
+	// Length of hardware address(6) & protocol address(4) in Byte
+	tmp.sprintf("Hardware address length: %d", ap->haddr_len);
+	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
+	tmp.sprintf("Protocol address length: %d", ap->paddr_len);
+	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
+
+	// op code
+	switch(ntohs(ap->op)){
+		case 1:
+			opcode.sprintf("request(1)");
+			break;
+		case 2:
+			opcode.sprintf("reply(2)");
+			break;
+		default:
+			opcode.sprintf("RARP");
+	}
+	ret->addChild(new QTreeWidgetItem(ret, QStringList("Opcode: " + opcode)));
+
+	// addresses
+	tmp.sprintf("Sender MAC address: %02X-%02X-%02X-%02X-%02X-%02X", ap->src[0], ap->src[1], ap->src[2], ap->src[3], ap->src[4], ap->src[5]);
+	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
+	tmp.sprintf("Sender IP address: %d.%d.%d.%d", ap->ipsrc.byte1, ap->ipsrc.byte2, ap->ipsrc.byte3, ap->ipsrc.byte4);
+	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
+	tmp.sprintf("Target MAC address: %02X-%02X-%02X-%02X-%02X-%02X", ap->dst[0], ap->dst[1], ap->dst[2], ap->dst[3], ap->dst[4], ap->dst[5]);
+	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
+	tmp.sprintf("Target IP address: %d.%d.%d.%d", ap->ipdst.byte1, ap->ipdst.byte2, ap->ipdst.byte3, ap->ipdst.byte4);
+	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
+
+	ret->setText(0, "Address Resolution Protocol" + opcode);
 	return ret;
 }
 
@@ -551,6 +606,9 @@ void OpenSF::judge_proto(int port, QString *str, QString def)
 			break;
 		case 161:
 			*str = "SNMP";
+			break;
+		case 443:
+			*str = "SSL";
 			break;
 		default:
 			*str = def;

@@ -20,10 +20,12 @@ class OpenSF : public QMainWindow
 public:
 	OpenSF(QWidget *parent = 0, Qt::WFlags flags = 0);
 	int find_devs();
-	QStringList * prase_mac(mac_header *mh);
-	QStringList * prase_ip(ip_header *ih);
-	QStringList * prase_tcp(tcp_header *th);
-	QStringList * prase_udp(udp_header *uh);
+	QTreeWidgetItem * prase_mac(mac_header *mh);
+	QTreeWidgetItem * prase_ip(ip_header *ih);
+	QTreeWidgetItem * prase_tcp(tcp_header *th);
+	QTreeWidgetItem * prase_udp(udp_header *uh);
+	QTreeWidgetItem * prase_arp(arp_payload *ap);
+
 	void judge_proto(int port, QString *str, QString def);
 	~OpenSF();
 	// friend class cap_thread;
@@ -45,12 +47,10 @@ private:
 
 	pcap_if_t *alldevs;        // device list
 	pcap_if_t *d;
-	// char ans[10], str[20];
 	char errbuf[PCAP_ERRBUF_SIZE];
-	struct bpf_program fcode;
 	vector<pkt_info> *pkts;
 	int dev_num;
-	// vector<pkt_info>::iterator iter
+	QString filter;
 	vector<pkt_info>::size_type index;
 
 
@@ -58,6 +58,9 @@ private:
 		void start_cap();
 		void stop_cap();
 		void show_pkt(int row);
+		void check_filter();
+		void apply_filter();
+		void clear_filter();
 
 };
 

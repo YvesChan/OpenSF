@@ -1,4 +1,6 @@
 #include "capture.h"
+#include <cstdio>
+
 
 cap_thread::cap_thread(pcap_if_t *alldevs, int d_num)
 {
@@ -17,6 +19,12 @@ vector<pkt_info> * cap_thread::get_pkt_list()
 	return pkts;
 }
 
+void cap_thread::set_filter(char *str)
+{
+	strncpy(filter, str, sizeof(filter));
+	return;
+}
+
 int cap_thread::pkt_cap()
 {
 	pcap_if_t *dev;
@@ -26,6 +34,8 @@ int cap_thread::pkt_cap()
 	struct tm *ltime;
 	time_t time;
 	char timestr[16];
+	unsigned int netmask;
+	struct bpf_program fcode;
 
 	int res;
 	int i = 1;   // start from 1
@@ -39,6 +49,33 @@ int cap_thread::pkt_cap()
 		fprintf(stderr, "\nUnable to open adapter: %s\n", dev->name);
 		return -1;
 	}
+
+	// detect Ethernet
+	if(pcap_datalink(adhandle) != DLT_EN10MB)
+    {
+		fprintf(stderr,"\nThis program works only on Ethernet networks.\n");
+		return -1;
+    }
+
+	// get the device's first address
+	if(dev->addresses != NULL)
+		netmask = ((struct sockaddr_in *)(dev->addresses->netmask))->sin_addr.S_un.S_addr;
+	else 
+		netmask = 0xffffff;
+
+	// compile filter
+	if (pcap_compile(adhandle, &fcode, filter, 1, netmask) < 0 )
+	{
+		fprintf(stderr,"\nUnable to compile the packet filter. Check the syntax.\n");
+		return -1;
+	}
+
+	// set filter
+    if (pcap_setfilter(adhandle, &fcode) < 0)
+    {
+		fprintf(stderr,"\nError setting the filter.\n");
+		return -1;
+    }
 
 	while((res = pcap_next_ex(adhandle, &header, &pkt_data)) >= 0){
 		if(!status){

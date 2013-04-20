@@ -1,7 +1,7 @@
 /****************************************************************************
 ** Meta object code from reading C++ file 'opensf.h'
 **
-** Created: Thu Apr 18 22:49:48 2013
+** Created: Sun Apr 21 00:28:10 2013
 **      by: The Qt Meta Object Compiler version 63 (Qt 4.8.1)
 **
 ** WARNING! All changes made in this file will be lost!
@@ -23,7 +23,7 @@ static const uint qt_meta_data_OpenSF[] = {
        6,       // revision
        0,       // classname
        0,    0, // classinfo
-       4,   14, // methods
+       7,   14, // methods
        0,    0, // properties
        0,    0, // enums/sets
        0,    0, // constructors
@@ -35,6 +35,9 @@ static const uint qt_meta_data_OpenSF[] = {
       29,    7,    7,    7, 0x08,
       41,    7,    7,    7, 0x08,
       56,   52,    7,    7, 0x08,
+      70,    7,    7,    7, 0x08,
+      85,    7,    7,    7, 0x08,
+     100,    7,    7,    7, 0x08,
 
        0        // eod
 };
@@ -42,6 +45,8 @@ static const uint qt_meta_data_OpenSF[] = {
 static const char qt_meta_stringdata_OpenSF[] = {
     "OpenSF\0\0pkt_num\0display(int)\0start_cap()\0"
     "stop_cap()\0row\0show_pkt(int)\0"
+    "check_filter()\0apply_filter()\0"
+    "clear_filter()\0"
 };
 
 void OpenSF::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void **_a)
@@ -54,6 +59,9 @@ void OpenSF::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void
         case 1: _t->start_cap(); break;
         case 2: _t->stop_cap(); break;
         case 3: _t->show_pkt((*reinterpret_cast< int(*)>(_a[1]))); break;
+        case 4: _t->check_filter(); break;
+        case 5: _t->apply_filter(); break;
+        case 6: _t->clear_filter(); break;
         default: ;
         }
     }
@@ -91,9 +99,9 @@ int OpenSF::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 4)
+        if (_id < 7)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 4;
+        _id -= 7;
     }
     return _id;
 }

@@ -62,5 +62,16 @@ typedef struct tcp_header{
 	u_int op_pad;         // optional
 }tcp_header;
 
+typedef struct arp_payload{
+	u_short hardware;		// hardware type
+	u_short proto;			// protocol type
+	u_char haddr_len;		// hardware address length
+	u_char paddr_len;		// protocol address length
+	u_short op;				// operation
+	u_char src[6];         // source mac address
+	ip_address ipsrc;		// source ip address
+	u_char dst[6];
+	ip_address ipdst;
+}arp_payload;
 
 #endif

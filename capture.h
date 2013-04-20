@@ -20,6 +20,7 @@ public:
 	~cap_thread();
 	vector<pkt_info> * get_pkt_list();
 	void set_status(bool val);
+	void set_filter(char *str);
 
 	public slots:
 		int pkt_cap();       // capture function
@@ -31,6 +32,7 @@ private:
 	pcap_if_t *dev_list;      // devices list passed by main thread
 	pcap_t *adhandle;         // pcap instance
 	int dev_num;          // current selected dev's index number
+	char filter[100];      // filter string
 	vector<pkt_info> *pkts;    // packet container
 	bool status;
 
