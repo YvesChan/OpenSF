@@ -169,10 +169,10 @@ void OpenSF::stop_cap()
 // display packet. 
 void OpenSF::display(int pkt_num)
 {
-	char time_stamp[30];
-	char src[20];
-	char dst[20];
-	char pro[10];
+	QString time_stamp;
+	QString src;
+	QString dst;
+	QString pro;
 	mac_header *mh;
 	ip_header *ih;
 	unsigned int ip_len;
@@ -181,26 +181,25 @@ void OpenSF::display(int pkt_num)
 	unsigned short sport, dport;    // source, distination port
 
 	index = (vector<pkt_info>::size_type)pkt_num;
-	// printf("%s,%.6d  len:%d\n", (*pkts)[index].timestr, (*pkts)[index].ms, (*pkts)[index].len);
-	sprintf(time_stamp, "%s,%.6d", (*pkts)[index].timestr, (*pkts)[index].ms);
+	time_stamp.sprintf("%s,%.6d", (*pkts)[index].timestr, (*pkts)[index].ms);
 	
 	// get mac header position
 	mh = (mac_header *)(*pkts)[index].pkt_data;
 	u_short ftype = ntohs(mh->type);     // frame type, since it's two bytes, it needs to be transformed
 
-	printf("  dst:%02X-%02X-%02X-%02X-%02X-%02X src:%02X-%02X-%02X-%02X-%02X-%02X   ", 
+	/* printf("  dst:%02X-%02X-%02X-%02X-%02X-%02X src:%02X-%02X-%02X-%02X-%02X-%02X   ", 
 		mh->dst[0], mh->dst[1], mh->dst[2], mh->dst[3], mh->dst[4], mh->dst[5],
 		mh->src[0], mh->src[1], mh->src[2], mh->src[3], mh->src[4], mh->src[5]);
-	printf("frame type: %x\n", ftype);
-	cout << endl;
+	// printf("frame type: %x\n", ftype);
+	// cout << endl;  */
 
 	switch(ftype){     // EtherType, see more:http://en.wikipedia.org/wiki/Ethertype
 		case 0x0806:     // ARP packet
-			sprintf(src, "%02X-%02X-%02X-%02X-%02X-%02X", 
+			src.sprintf("%02X-%02X-%02X-%02X-%02X-%02X", 
 				mh->src[0], mh->src[1], mh->src[2], mh->src[3], mh->src[4], mh->src[5]);
-			sprintf(dst, "%02X-%02X-%02X-%02X-%02X-%02X",
+			dst.sprintf("%02X-%02X-%02X-%02X-%02X-%02X",
 				mh->dst[0], mh->dst[1], mh->dst[2], mh->dst[3], mh->dst[4], mh->dst[5]);
-			strcpy(pro, "ARP");
+			pro = "ARP";
 			break;
 		case 0x0800:     // IPv4 packet
 			ih = (ip_header *)((u_char*)mh + 14);   // get ip header position
@@ -211,10 +210,10 @@ void OpenSF::display(int pkt_num)
 				sport = ntohs(th->sport);
 				dport = ntohs(th->dport);
 				if(dport < 1024){
-					judge_proto(dport, pro, "TCP");
+					judge_proto(dport, &pro, "TCP");
 				}
 				else {
-					judge_proto(sport, pro, "TCP");
+					judge_proto(sport, &pro, "TCP");
 				}
 			}
 			else if((ih->proto ^ 0x11) == 0){     // UDP
@@ -222,39 +221,39 @@ void OpenSF::display(int pkt_num)
 				sport = ntohs(uh->sport);
 				dport = ntohs(uh->dport);
 				if(dport < 1024){
-					judge_proto(dport, pro, "UDP");
+					judge_proto(dport, &pro, "UDP");
 				}
 				else {
-					judge_proto(sport, pro, "UDP");
+					judge_proto(sport, &pro, "UDP");
 				}
 			}
 			else if((ih->proto ^ 0x01) == 0){
-				strcpy(pro, "ICMP");
+				pro = "ICMP";
 			}
 			else if((ih->proto ^ 0x02) == 0){
-				strcpy(pro, "IGMP");
+				pro = "IGMP";
 			}
-			else strcpy(pro, "Unknown");
+			else pro = "Unknown";
 			
-			sprintf(src, "%d.%d.%d.%d", ih->saddr.byte1, ih->saddr.byte2, ih->saddr.byte3, ih->saddr.byte4);
-			sprintf(dst, "%d.%d.%d.%d", ih->daddr.byte1, ih->daddr.byte2, ih->daddr.byte3, ih->daddr.byte4);
-			printf("      src:%d.%d.%d.%d ", ih->saddr.byte1, ih->saddr.byte2, ih->saddr.byte3, ih->saddr.byte4);
-			printf("dst:%d.%d.%d.%d \n", ih->daddr.byte1, ih->daddr.byte2, ih->daddr.byte3, ih->daddr.byte4);
+			src.sprintf("%d.%d.%d.%d", ih->saddr.byte1, ih->saddr.byte2, ih->saddr.byte3, ih->saddr.byte4);
+			dst.sprintf("%d.%d.%d.%d", ih->daddr.byte1, ih->daddr.byte2, ih->daddr.byte3, ih->daddr.byte4);
+			// printf("      src:%d.%d.%d.%d ", ih->saddr.byte1, ih->saddr.byte2, ih->saddr.byte3, ih->saddr.byte4);
+			// printf("dst:%d.%d.%d.%d \n", ih->daddr.byte1, ih->daddr.byte2, ih->daddr.byte3, ih->daddr.byte4);
 			break;
 		case 0x86DD:       // IPv6
 			// TO DO
-			sprintf(src, "%02X-%02X-%02X-%02X-%02X-%02X", 
+			src.sprintf("%02X-%02X-%02X-%02X-%02X-%02X", 
 				mh->src[0], mh->src[1], mh->src[2], mh->src[3], mh->src[4], mh->src[5]);
-			sprintf(dst, "%02X-%02X-%02X-%02X-%02X-%02X",
+			dst.sprintf("%02X-%02X-%02X-%02X-%02X-%02X",
 				mh->dst[0], mh->dst[1], mh->dst[2], mh->dst[3], mh->dst[4], mh->dst[5]);
-			strcpy(pro, "IPv6");
+			pro = "IPv6";
 			break;
 		default:
-			sprintf(src, "%02X-%02X-%02X-%02X-%02X-%02X", 
+			src.sprintf("%02X-%02X-%02X-%02X-%02X-%02X", 
 				mh->src[0], mh->src[1], mh->src[2], mh->src[3], mh->src[4], mh->src[5]);
-			sprintf(dst, "%02X-%02X-%02X-%02X-%02X-%02X",
+			dst.sprintf("%02X-%02X-%02X-%02X-%02X-%02X",
 				mh->dst[0], mh->dst[1], mh->dst[2], mh->dst[3], mh->dst[4], mh->dst[5]);
-			strcpy(pro, "Unknown");
+			pro = "Unknown";
 	}
 
 	// add table data
@@ -271,6 +270,11 @@ void OpenSF::display(int pkt_num)
 
 void OpenSF::show_pkt(int row)
 {
+	// clear treewidget
+	if(ui.treeWidget->topLevelItemCount() != 0){
+		ui.treeWidget->clear();
+	}
+
 	index = (vector<pkt_info>::size_type)row;
 	QStringList *mac;
 	QStringList *ip;
@@ -395,7 +399,7 @@ QStringList * OpenSF::prase_ip(ip_header *ih)
 
 	// first 1 bit reserved, remain 2 bits are DF & MF
 	tshort = (ih->flags_fo & 0xe000) >> 13;
-	tmp.sprintf("Flags: %02X", tshort);
+	tmp.sprintf("Flags: 0x%02X", tshort);
 	if(tshort == 1){
 		tmp += " (More Fragment)";
 	}
@@ -414,7 +418,7 @@ QStringList * OpenSF::prase_ip(ip_header *ih)
 	*ret << tmp;
 
 	// protoco;l
-	tmp.sprintf("Protocol: %02X ", ih->proto);
+	tmp.sprintf("Protocol: 0x%02X ", ih->proto);
 	switch(ih->proto){
 		case 1:
 			tmp += "(ICMP)";
@@ -432,7 +436,7 @@ QStringList * OpenSF::prase_ip(ip_header *ih)
 	*ret << tmp;
 
 	// ip checksum
-	tmp.sprintf("Header Checksum: %02X", ih->crc);
+	tmp.sprintf("Header Checksum: 0x%02X", ih->crc);
 	*ret << tmp;
 
 	// src & dst address
@@ -448,33 +452,35 @@ QStringList * OpenSF::prase_tcp(tcp_header *th)
 {
 	QStringList *ret = new QStringList();
 	QString tmp;
-	char pro[10];
+	QString pro;
 	unsigned short tshort;
 
 	// src & dst port
 	tshort = ntohs(th->sport);
-	judge_proto(tshort, pro, "Undefine");
-	tmp.sprintf("Source port: %d (%s)", tshort, pro);
+	judge_proto(tshort, &pro, "Undefine");
+	tmp.sprintf("Source port: %d ", tshort);
+	tmp += "(" + pro + ")";
 	*ret << tmp;
 	tshort = ntohs(th->dport);
-	judge_proto(tshort, pro, "Undefine");
-	tmp.sprintf("Destination port: %d (%s)", tshort, pro);
+	judge_proto(tshort, &pro, "Undefine");
+	tmp.sprintf("Destination port: %d ", tshort);
+	tmp += "(" + pro + ")";
 	*ret << tmp;
 
 	// seq number & ack num
-	tmp.sprintf("Sequence number: %d", ntohl(th->seqnum));
+	tmp.sprintf("Sequence number: %u", ntohl(th->seqnum));
 	*ret << tmp;
-	tmp.sprintf("Acknowledge number: %d", ntohl(th->acknum));
+	tmp.sprintf("Acknowledge number: %u", ntohl(th->acknum));
 	*ret << tmp;
 
 	// tcp header length: (4 bits)
 	tshort = (th->hl_flag & 0xf000) >> 12;
-	tmp.sprintf("Header length: %d", tshort * 4);
+	tmp.sprintf("Header length: %d Bytes", tshort * 4);
 	*ret << tmp;
 
 	// flags
 	tshort = th->hl_flag & 0x00ff;
-	tmp.sprintf("Flags: %02X", tshort);
+	tmp.sprintf("Flags: 0x%02X", tshort);
 	*ret << tmp;
 
 	// window size
@@ -482,7 +488,7 @@ QStringList * OpenSF::prase_tcp(tcp_header *th)
 	*ret << tmp;
 
 	// checksum
-	tmp.sprintf("Checksum: %d", ntohs(th->crc));
+	tmp.sprintf("Checksum: 0x%d", ntohs(th->crc));
 	*ret << tmp;
 
 	return ret;
@@ -492,60 +498,62 @@ QStringList * OpenSF::prase_udp(udp_header *uh)
 {
 	QStringList *ret = new QStringList();
 	QString tmp;
-	char pro[10];
+	QString pro;
 	unsigned short tshort;
 
 	// src & dst port
 	tshort = ntohs(uh->sport);
-	judge_proto(tshort, pro, "Undefine");
-	tmp.sprintf("Source port: %d (%s)", tshort, pro);
+	judge_proto(tshort, &pro, "Undefine");
+	tmp.sprintf("Source port: %d ", tshort);
+	tmp += "(" + pro + ")";
 	*ret << tmp;
 	tshort = ntohs(uh->dport);
-	judge_proto(tshort, pro, "Undefine");
-	tmp.sprintf("Destination port: %d (%s)", tshort, pro);
+	judge_proto(tshort, &pro, "Undefine");
+	tmp.sprintf("Destination port: %d ", tshort);
+	tmp += "(" + pro + ")";
 	*ret << tmp;
 
 	// Length & checksum
 	tmp.sprintf("Length: %d", ntohs(uh->len));
 	*ret << tmp;
-	tmp.sprintf("Checksum: %04X", uh->crc);
+	tmp.sprintf("Checksum: 0x%04X", uh->crc);
 	*ret << tmp;
 
 	return ret;
 }
 
-void OpenSF::judge_proto(int port, char *str, char *def)
+void OpenSF::judge_proto(int port, QString *str, QString def)
 {
 	switch(port){
 		case 21:
-			strcpy(str, "FTP");
+			*str = "FTP";
 			break;
 		case 22:
-			strcpy(str, "SSH");
+			*str = "SSH";
 			break;
 		case 23:
-			strcpy(str, "Telnet");
+			*str = "Telnet";
 			break;
 		case 25:
-			strcpy(str, "SMTP");
+			*str = "SMTP";
 			break;
 		case 43:
-			strcpy(str, "WHOIS");
+			*str = "WHOIS";
 			break;
 		case 53:
-			strcpy(str, "DNS");
+			*str = "DNS";
 			break;
 		case 80:
-			strcpy(str, "HTTP");
+			*str = "HTTP";
 			break;
 		case 115:
-			strcpy(str, "SFTP");
+			*str = "SFTP";
 			break;
 		case 161:
-			strcpy(str, "SNMP");
+			*str = "SNMP";
 			break;
 		default:
-			strcpy(str, def);
+			*str = def;
 	}
 }
 

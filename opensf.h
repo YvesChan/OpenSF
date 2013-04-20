@@ -24,7 +24,7 @@ public:
 	QStringList * prase_ip(ip_header *ih);
 	QStringList * prase_tcp(tcp_header *th);
 	QStringList * prase_udp(udp_header *uh);
-	void judge_proto(int port, char *str, char *def);
+	void judge_proto(int port, QString *str, QString def);
 	~OpenSF();
 	// friend class cap_thread;
 

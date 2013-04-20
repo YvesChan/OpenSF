@@ -53,7 +53,7 @@ int cap_thread::pkt_cap()
 		time = header->ts.tv_sec;
 		ltime = localtime(&time);
 		strftime(timestr, sizeof(timestr), "%H:%M:%S", ltime);
-		printf("%d: %s,%.6d  len:%d \n", pkt_num, timestr, header->ts.tv_usec, header->len);
+		// printf("%d: %s,%.6d  len:%d \n", pkt_num, timestr, header->ts.tv_usec, header->len);
 
 		struct pkt_info pkt;
 		strcpy(pkt.timestr, timestr);
