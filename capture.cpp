@@ -28,7 +28,6 @@ void cap_thread::set_filter(char *str)
 int cap_thread::pkt_cap()
 {
 	pcap_if_t *dev;
-	char errbuf[PCAP_ERRBUF_SIZE];
 	struct pcap_pkthdr *header;
 	const u_char *pkt_data;     // packet buffer
 	struct tm *ltime;

@@ -21,6 +21,7 @@ public:
 	vector<pkt_info> * get_pkt_list();
 	void set_status(bool val);
 	void set_filter(char *str);
+	char errbuf[PCAP_ERRBUF_SIZE];
 
 	public slots:
 		int pkt_cap();       // capture function

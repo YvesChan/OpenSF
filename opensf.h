@@ -25,6 +25,8 @@ public:
 	QTreeWidgetItem * prase_tcp(tcp_header *th);
 	QTreeWidgetItem * prase_udp(udp_header *uh);
 	QTreeWidgetItem * prase_arp(arp_payload *ap);
+	QTreeWidgetItem * prase_icmp(icmp_payload *ic);
+	QTreeWidgetItem * prase_dns(dns_payload *dp);
 
 	void judge_proto(int port, QString *str, QString def);
 	~OpenSF();
@@ -47,7 +49,6 @@ private:
 
 	pcap_if_t *alldevs;        // device list
 	pcap_if_t *d;
-	char errbuf[PCAP_ERRBUF_SIZE];
 	vector<pkt_info> *pkts;
 	int dev_num;
 	QString filter;

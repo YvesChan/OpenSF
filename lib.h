@@ -74,4 +74,21 @@ typedef struct arp_payload{
 	ip_address ipdst;
 }arp_payload;
 
+typedef struct icmp_payload{
+	u_char type;		// pkt type
+	u_char code;		// code in type
+	u_short checksum;
+	u_short id;
+	u_short seq;
+}icmp_payload;
+
+typedef struct dns_payload{
+	u_short id;
+	u_short flags;		// QR 1, opcode 4, AA TC RD RA 4, zero 3, rcode 4
+	u_short ques;		// question number
+	u_short ans;		// answer resource records
+	u_short aut;		// authority resource records
+	u_short add;		// addition..
+}dns_payload;
+
 #endif

@@ -27,15 +27,14 @@ OpenSF::OpenSF(QWidget *parent, Qt::WFlags flags)
 	combo_box_devs = new QComboBox(this);
 	combo_box_filter = new QComboBox(this);
 	act_grp = new QActionGroup(this);
-	act_start = new QAction("Start", act_grp);
-	act_stop = new QAction("Stop", act_grp);
-	act_apply = new QAction("Apply", this);
-	act_clear = new QAction("Clear", this);
+	act_start = new QAction(QIcon("Resources\\start.png"), "Start", act_grp);
+	act_stop = new QAction(QIcon("Resources\\stop.png"), "Stop", act_grp);
+	act_apply = new QAction(QIcon("Resources\\apply.png"), "Apply", this);
+	act_clear = new QAction(QIcon("Resources\\clear.png"), "Clear", this);
 
 	act_grp->addAction(act_start);
 	act_grp->addAction(act_stop);
 	combo_box_filter->setEditable(true);
-
 
 	act_start->setCheckable(true);
 	act_stop->setCheckable(true);
@@ -57,9 +56,13 @@ OpenSF::OpenSF(QWidget *parent, Qt::WFlags flags)
 
 	ui.mainToolBar->addSeparator();
 
+	ui.mainToolBar->addWidget(new QLabel("Filter:", this));
 	ui.mainToolBar->addWidget(combo_box_filter);
 	ui.mainToolBar->addAction(act_apply);
 	ui.mainToolBar->addAction(act_clear);
+
+	combo_box_devs->resize(200, 40);
+	combo_box_filter->resize(300, 40);
 
 	// configure tablewidget style
 	ui.tableWidget->verticalHeader()->setVisible(false);     // Disable the row header
@@ -70,7 +73,7 @@ OpenSF::OpenSF(QWidget *parent, Qt::WFlags flags)
 	ui.tableWidget->setColumnWidth(3, 140);
 	ui.tableWidget->setColumnWidth(4, 60);
 	ui.tableWidget->setColumnWidth(5, 55);
-	ui.tableWidget->setColumnWidth(6, 200);
+	ui.tableWidget->setColumnWidth(6, 400);
 
 	connect(act_start, SIGNAL(triggered()), this, SLOT(start_cap()));
 	connect(act_stop, SIGNAL(triggered()), this, SLOT(stop_cap()));
@@ -115,6 +118,7 @@ int OpenSF::find_devs()
 {
 	int fir = 0, las = 0;
 	int count = 0;         // amount of devices
+	char errbuf[PCAP_ERRBUF_SIZE];
 
 	/* get local devices list */
 	if (pcap_findalldevs_ex(PCAP_SRC_IF_STRING, NULL /* auth is not needed */, &alldevs, errbuf) == -1){
@@ -159,9 +163,13 @@ void OpenSF::start_cap()
 			for(int i = ui.tableWidget->rowCount() - 1; i >= 0; i --){
 				ui.tableWidget->removeRow(i);
 			}
+			ui.treeWidget->clear();
 			capture->deleteLater();    // delete old capture instance, especially for *pkts
 		}
-		else return;
+		else {
+			act_stop->setChecked(true);
+			return;
+		}
 	}
 
 	// start a capture
@@ -196,19 +204,23 @@ void OpenSF::stop_cap()
 	}
 }
 
-// display packet. 
+// display packet's basic infomations in tablewidget as list
 void OpenSF::display(int pkt_num)
 {
 	QString time_stamp;
 	QString src;
 	QString dst;
 	QString pro;
+	QString info;
 	mac_header *mh;
 	ip_header *ih;
 	unsigned int ip_len;
 	tcp_header *th;
 	udp_header *uh;
 	unsigned short sport, dport;    // source, distination port
+	arp_payload *ap;
+	icmp_payload *ic;
+	dns_payload *dp;
 
 	index = (vector<pkt_info>::size_type)pkt_num;
 	time_stamp.sprintf("%s,%.6d", (*pkts)[index].timestr, (*pkts)[index].ms);
@@ -217,12 +229,6 @@ void OpenSF::display(int pkt_num)
 	mh = (mac_header *)(*pkts)[index].pkt_data;
 	u_short ftype = ntohs(mh->type);     // frame type, since it's two bytes, it needs to be transformed
 
-	/* printf("  dst:%02X-%02X-%02X-%02X-%02X-%02X src:%02X-%02X-%02X-%02X-%02X-%02X   ", 
-		mh->dst[0], mh->dst[1], mh->dst[2], mh->dst[3], mh->dst[4], mh->dst[5],
-		mh->src[0], mh->src[1], mh->src[2], mh->src[3], mh->src[4], mh->src[5]);
-	// printf("frame type: %x\n", ftype);
-	// cout << endl;  */
-
 	switch(ftype){     // EtherType, see more:http://en.wikipedia.org/wiki/Ethertype
 		case 0x0806:     // ARP packet
 			src.sprintf("%02X-%02X-%02X-%02X-%02X-%02X", 
@@ -230,46 +236,80 @@ void OpenSF::display(int pkt_num)
 			dst.sprintf("%02X-%02X-%02X-%02X-%02X-%02X",
 				mh->dst[0], mh->dst[1], mh->dst[2], mh->dst[3], mh->dst[4], mh->dst[5]);
 			pro = "ARP";
+			ap = (arp_payload *)((u_char *)mh + 14);
+			if(ntohs(ap->op) == 1){
+				info.sprintf("Who has %d.%d.%d.%d?  Tell %d.%d.%d.%d", 
+					ap->ipdst.byte1, ap->ipdst.byte2, ap->ipdst.byte3, ap->ipdst.byte4, 
+					ap->ipsrc.byte1, ap->ipsrc.byte2, ap->ipsrc.byte3, ap->ipsrc.byte4);
+			}
+			else {
+				info.sprintf("%d.%d.%d.%d is at %02X-%02X-%02X-%02X-%02X-%02X",
+					ap->ipsrc.byte1, ap->ipsrc.byte2, ap->ipsrc.byte3, ap->ipsrc.byte4,
+					ap->src[0], ap->src[1], ap->src[2], ap->src[3], ap->src[4], ap->src[5]);
+			}
 			break;
 		case 0x0800:     // IPv4 packet
 			ih = (ip_header *)((u_char*)mh + 14);   // get ip header position
 			ip_len = (ih->ver_ihl & 0xf) * 4;      // get ip header's length
 
-			if((ih->proto ^ 0x06) == 0){      // TCP
-				th = (tcp_header *)((unsigned char *)ih + ip_len);   // get TCP header position
-				sport = ntohs(th->sport);
-				dport = ntohs(th->dport);
-				if(dport < 1024){
-					judge_proto(dport, &pro, "TCP");
-				}
-				else {
-					judge_proto(sport, &pro, "TCP");
-				}
+			switch(ih->proto){
+				case 6:          // TCP
+					th = (tcp_header *)((unsigned char *)ih + ip_len);   // get TCP header position
+					sport = ntohs(th->sport);
+					dport = ntohs(th->dport);
+					if(dport < 1024){
+						judge_proto(dport, &pro, "TCP");
+					}
+					else {
+						judge_proto(sport, &pro, "TCP");
+					}
+					break;
+				case 17:		// UDP
+					uh = (udp_header *)((unsigned char *)ih + ip_len);
+					sport = ntohs(uh->sport);
+					dport = ntohs(uh->dport);
+					if(dport < 1024){
+						judge_proto(dport, &pro, "UDP");
+					}
+					else {
+						judge_proto(sport, &pro, "UDP");
+					}
+					if(pro.compare("DNS") == 0){
+						dp = (dns_payload *)((u_char *)uh + 8);
+						if((dp->flags & 0x8000) == 0x8000)
+							info.sprintf("Standard Query Response");
+						else 
+							info.sprintf("Standard Query");
+					}
+					break;
+				case 1:
+					pro = "ICMP";
+					ic = (icmp_payload *)((unsigned char *)ih + ip_len);
+					switch(ic->type){
+						case 0:
+							info = "Echo(ping) reply";
+							break;
+						case 3:
+							info = "Target unreachable";
+							break;
+						case 8:
+							info = "Echo(ping) request";
+							break;
+						case 11:
+							info = "Time out";
+							break;
+					}
+					break;		
+				case 2:
+					pro = "IGMP";
+					break;
+				default:
+					pro = "Unknown";
 			}
-			else if((ih->proto ^ 0x11) == 0){     // UDP
-				uh = (udp_header *)((unsigned char *)ih + ip_len);
-				sport = ntohs(uh->sport);
-				dport = ntohs(uh->dport);
-				if(dport < 1024){
-					judge_proto(dport, &pro, "UDP");
-				}
-				else {
-					judge_proto(sport, &pro, "UDP");
-				}
-			}
-			else if((ih->proto ^ 0x01) == 0){
-				pro = "ICMP";
-			}
-			else if((ih->proto ^ 0x02) == 0){
-				pro = "IGMP";
-			}
-			else pro = "Unknown";
-			
-			cout << flush;
+
+			// cout << flush;
 			src.sprintf("%d.%d.%d.%d", ih->saddr.byte1, ih->saddr.byte2, ih->saddr.byte3, ih->saddr.byte4);
 			dst.sprintf("%d.%d.%d.%d", ih->daddr.byte1, ih->daddr.byte2, ih->daddr.byte3, ih->daddr.byte4);
-			// printf("      src:%d.%d.%d.%d ", ih->saddr.byte1, ih->saddr.byte2, ih->saddr.byte3, ih->saddr.byte4);
-			// printf("dst:%d.%d.%d.%d \n", ih->daddr.byte1, ih->daddr.byte2, ih->daddr.byte3, ih->daddr.byte4);
 			break;
 		case 0x86DD:       // IPv6
 			// TO DO
@@ -295,10 +335,12 @@ void OpenSF::display(int pkt_num)
 	ui.tableWidget->setItem(pkt_num, 3, new QTableWidgetItem(dst));
 	ui.tableWidget->setItem(pkt_num, 4, new QTableWidgetItem(pro));
 	ui.tableWidget->setItem(pkt_num, 5, new QTableWidgetItem(QString::number((*pkts)[index].len)));
+	ui.tableWidget->setItem(pkt_num, 6, new QTableWidgetItem(info));
 	
 	return;
 }
 
+// show packet's details in treewidget
 void OpenSF::show_pkt(int row)
 {
 	// clear treewidget
@@ -316,7 +358,7 @@ void OpenSF::show_pkt(int row)
 	mac_header *mh = (mac_header *)(*pkts)[index].pkt_data;
 	dll = prase_mac(mh);
 	ui.treeWidget->insertTopLevelItem(0, dll);
-	if(ntohs(mh->type) == 0x0806){
+	if(ntohs(mh->type) == 0x0806){       // ARP
 		arp_payload *ap = (arp_payload *)((u_char *)mh + 14);
 		payload = prase_arp(ap);
 		ui.treeWidget->insertTopLevelItem(1, payload);
@@ -328,7 +370,9 @@ void OpenSF::show_pkt(int row)
 	nl = prase_ip(ih);
 	ui.treeWidget->insertTopLevelItem(1, nl);
 	if(ih->proto == 1 || ih->proto == 2){    // ICMP & IGMP 
-		// TO DO
+		icmp_payload *ic = (icmp_payload *)((u_char *)ih + (ih->ver_ihl & 0xf) * 4);
+		payload = prase_icmp(ic);
+		ui.treeWidget->insertTopLevelItem(2, payload);
 		return;
 	}
 
@@ -342,6 +386,13 @@ void OpenSF::show_pkt(int row)
 		udp_header *uh = (udp_header *)((unsigned char *)ih + (ih->ver_ihl & 0xf) * 4);
 		tl = prase_udp(uh);
 		ui.treeWidget->insertTopLevelItem(2, tl);
+
+		// tmp implement
+		if(ntohs(uh->dport) == 53 || ntohs(uh->sport) == 53){
+			dns_payload *dp = (dns_payload *)((u_char *)uh + 8);
+			payload = prase_dns(dp);
+			ui.treeWidget->insertTopLevelItem(3, payload);
+		}
 	}
 
 }
@@ -461,7 +512,9 @@ QTreeWidgetItem * OpenSF::prase_tcp(tcp_header *th)
 	QTreeWidgetItem *ret = new QTreeWidgetItem(ui.treeWidget);
 	QString tmp;
 	QString pro;
+	QString fstr;
 	unsigned short tshort;
+	unsigned char tchar;
 
 	// src & dst port
 	tshort = ntohs(th->sport);
@@ -481,15 +534,84 @@ QTreeWidgetItem * OpenSF::prase_tcp(tcp_header *th)
 	tmp.sprintf("Acknowledge number: %u", ntohl(th->acknum));
 	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
 
-	// tcp header length: (4 bits)
-	tshort = (th->hl_flag & 0xf000) >> 12;
+	// tcp header length: (4 bits): NOTE here to change byte order
+	tshort = (ntohs(th->hl_flag) & 0xf000) >> 12;
 	tmp.sprintf("Header length: %d Bytes", tshort * 4);
 	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
 
 	// flags
-	tshort = th->hl_flag & 0x00ff;
-	tmp.sprintf("Flags: 0x%02X", tshort);
-	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
+	tshort = ntohs(th->hl_flag) & 0x00ff;
+	fstr.sprintf("Flags: 0x%04X (", tshort);
+	tchar = (u_char)tshort;
+	QTreeWidgetItem * flags = new QTreeWidgetItem(ret);
+
+	if((tchar & 0x80) == 0x80){		// CWR
+		tmp = "1... .... = Congestion Window Reduced (CWR): Set";
+		fstr += " CWR";
+	}
+	else 
+		tmp = "0... .... = Congestion Window Reduced (CWR): Not Set";
+	flags->addChild(new QTreeWidgetItem(flags, QStringList(tmp)));
+
+	if((tchar & 0x40) == 0x40){		// ECE
+		tmp = ".1.. .... = ECN-Echo(ECE): Set";
+		fstr += " ECE";
+	}
+	else 
+		tmp = ".0.. .... = ECN-Echo(ECE): Not Set";
+	flags->addChild(new QTreeWidgetItem(flags, QStringList(tmp)));
+
+	if((tchar & 0x20) == 0x20){		// URG
+		tmp = "..1. .... = Urgent Pointer (URG): Set";
+		fstr += " URG";
+	}
+	else 
+		tmp = "..0. .... = Urgent Pointer (URG): Not Set";
+	flags->addChild(new QTreeWidgetItem(flags, QStringList(tmp)));
+
+	if((tchar & 0x10) == 0x10){		// ACK
+		tmp = "...1 .... = Acknowledge (ACK): Set";
+		fstr += " ACK";
+	}
+	else 
+		tmp = "...0 .... = Urgent Pointer (ACK): Not Set";
+	flags->addChild(new QTreeWidgetItem(flags, QStringList(tmp)));
+
+	if((tchar & 0x08) == 0x08){		// PSH
+		tmp = ".... 1... = Push (PSH): Set";
+		fstr += " PSH";
+	}
+	else 
+		tmp = ".... 0... = Push (PSH): Not Set";
+	flags->addChild(new QTreeWidgetItem(flags, QStringList(tmp)));
+
+	if((tchar & 0x04) == 0x04){		// RST
+		tmp = ".... .1.. = Reset (RST): Set";
+		fstr += " RST";
+	}
+	else 
+		tmp = ".... .0.. = Reset (PSH): Not Set";
+	flags->addChild(new QTreeWidgetItem(flags, QStringList(tmp)));
+
+	if((tchar & 0x02) == 0x02){		// SYN
+		tmp = ".... ..1. = Sync (SYN): Set";
+		fstr += " SYN";
+	}
+	else 
+		tmp = ".... ..0. = Sync (SYN): Not Set";
+	flags->addChild(new QTreeWidgetItem(flags, QStringList(tmp)));
+
+	if((tchar & 0x01) == 0x01){		// FIN
+		tmp = ".... ...1 = Finish (FIN): Set";
+		fstr += " FIN";
+	}
+	else 
+		tmp = ".... ...0 = Finish (FIN): Not Set";
+	flags->addChild(new QTreeWidgetItem(flags, QStringList(tmp)));
+	
+	fstr += " )";
+	flags->setText(0, fstr);
+	// flags complete
 
 	// window size
 	tmp.sprintf("Window size: %d", ntohs(th->wsize));
@@ -573,9 +695,132 @@ QTreeWidgetItem * OpenSF::prase_arp(arp_payload *ap)
 	tmp.sprintf("Target IP address: %d.%d.%d.%d", ap->ipdst.byte1, ap->ipdst.byte2, ap->ipdst.byte3, ap->ipdst.byte4);
 	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
 
-	ret->setText(0, "Address Resolution Protocol" + opcode);
+	ret->setText(0, "Address Resolution Protocol  (" + opcode + ")");
 	return ret;
 }
+
+QTreeWidgetItem * OpenSF::prase_icmp(icmp_payload *ic)
+{
+	QTreeWidgetItem *ret = new QTreeWidgetItem(ui.treeWidget);
+	QString tmp;
+
+	tmp.sprintf("Type: %d", ic->type);
+	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
+	tmp.sprintf("Code: %d", ic->code);
+	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
+	tmp.sprintf("Checksum: %d", ntohs(ic->checksum));
+	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
+	tmp.sprintf("Identifier: %d", ntohs(ic->id));
+	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
+	tmp.sprintf("Sequence number: %d", ntohs(ic->seq));
+	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
+
+	ret->setText(0, "Internet Control Message Protocol");
+	return ret;
+}
+
+QTreeWidgetItem * OpenSF::prase_dns(dns_payload *dp)
+{
+	QTreeWidgetItem * ret = new QTreeWidgetItem(ui.treeWidget);
+	QString tmp;
+	u_short tshort;
+	u_short f = ntohs(dp->flags);      // NOTE:   change BE to LE !!!
+
+	tmp.sprintf("Transaction ID: %d", dp->id);
+	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
+	tmp.sprintf("Flags: 0x%04X", f);
+	QTreeWidgetItem * flags = new QTreeWidgetItem(ret, QStringList(tmp));
+	tshort = (f & 0x8000) >> 15;      // QR
+	if(tshort){
+		tmp.sprintf("QR:%d  (Message response)", tshort);
+	}
+	else {
+		tmp.sprintf("QR:%d  (Message query)", tshort);
+	}
+	flags->addChild(new QTreeWidgetItem(flags, QStringList(tmp)));
+	tshort = (f & 0x7800) >> 11;    // opcode
+	switch(tshort){
+		case 0:
+			flags->addChild(new QTreeWidgetItem(flags, QStringList("Standard query")));
+			break;
+		case 1:
+			flags->addChild(new QTreeWidgetItem(flags, QStringList("Reverse query")));
+			break;
+		default:
+			flags->addChild(new QTreeWidgetItem(flags, QStringList("Server status query")));
+	}
+	tshort = (f & 0x0780) >> 7;     // AA(Authoritative Answer) TC(TrunCation) RD(Recursion Desired) RA(Recursion Available)
+	tmp.sprintf("AA:TC:RD:RA  -  %d", tshort);
+	flags->addChild(new QTreeWidgetItem(flags, QStringList(tmp)));
+	tshort = f & 0x000f;       // rcode
+	tmp.sprintf("Reply code: %d  ", tshort);
+	switch(tshort){
+		case 0: 
+			tmp += "OK";
+			break;
+		case 1:
+			tmp += "Format error";
+			break;
+		case 2:
+			tmp += "Server failure";
+			break;
+		case 3:
+			tmp += "Name Error, no such name";
+			break;
+		default:
+			tmp += "Refused";
+	}
+	flags->addChild(new QTreeWidgetItem(flags, QStringList(tmp)));
+	ret->addChild(flags);
+
+	tmp.sprintf("Questions: %d", ntohs(dp->ques));
+	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
+	tmp.sprintf("Answer RRs: %d", ntohs(dp->ans));
+	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
+	tmp.sprintf("Authority RRs: %d", ntohs(dp->aut));
+	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
+	tmp.sprintf("Additions RRs: %d", ntohs(dp->aut));
+	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
+
+	// question segment
+	QString name((char *)dp + 12);
+	name[0] = 32;         // 'space'
+	for(int i = 1; i < name.length(); i ++){
+		if(name[i] < 32)       // invisible characters
+			name[i] = '.';
+	}
+	ret->addChild(new QTreeWidgetItem(ret, QStringList(name)));     // query domain name
+	// get query type's offset and use an unsigned short pointer!
+	int offset = 12 + name.length() + 1;
+	u_short *type = (u_short *)((u_char *)dp + offset);
+	offset += 2;
+	u_short *cla = (u_short *)((u_char *)dp + offset);
+	tshort = ntohs(*type);
+	tmp.sprintf("Type: 0x%02X  -  ", tshort);
+	switch(tshort){
+		case 1:
+			tmp += "A (IP address)";
+			break;
+		case 2:
+			tmp += "NS (name server)";
+			break;
+		case 5:
+			tmp += "CNAME (canonical name)";
+			break;
+		case 15:
+			tmp += "MX (mail exchange)";
+	}
+	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
+	tmp.sprintf("Class: 0x%02X", ntohs(*cla));
+	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
+
+	// TO DO : Answer Segment
+
+	ret->setText(0, "Domain Name System");
+	return ret;
+}
+
+
 
 void OpenSF::judge_proto(int port, QString *str, QString def)
 {
@@ -609,6 +854,9 @@ void OpenSF::judge_proto(int port, QString *str, QString def)
 			break;
 		case 443:
 			*str = "SSL";
+			break;
+		case 1900:
+			*str = "SSDP";
 			break;
 		default:
 			*str = def;
