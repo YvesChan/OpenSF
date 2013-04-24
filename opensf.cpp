@@ -1,4 +1,5 @@
 #include <QtGui>
+#include <QAction>
 #include <string>
 #include <QThread>
 #include <iostream>
@@ -12,15 +13,7 @@ OpenSF::OpenSF(QWidget *parent, Qt::WFlags flags)
 {
 	ui.setupUi(this);
 
-	// resize the splitter's position
-	QList<int> spli_pos;
-	spli_pos.append(220);
-	spli_pos.append(180);
-	spli_pos.append(111);
-	ui.splitter->setSizes(spli_pos);
-
 	// resize tablewidget's rows to fit their content and forbid editing
-	// ui.tableWidget->resizeRowsToContents();
 	ui.tableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
 
 	// readSettings();
@@ -50,6 +43,9 @@ OpenSF::OpenSF(QWidget *parent, Qt::WFlags flags)
 		exit(-1);
 	}
 
+	// initial toolbar
+	// combo_box_devs->resize(20, combo_box_devs->height());
+	// combo_box_filter->resize(20, combo_box_filter->height());
 	ui.mainToolBar->addWidget(combo_box_devs);
 	ui.mainToolBar->addAction(act_start);
 	ui.mainToolBar->addAction(act_stop);
@@ -60,9 +56,6 @@ OpenSF::OpenSF(QWidget *parent, Qt::WFlags flags)
 	ui.mainToolBar->addWidget(combo_box_filter);
 	ui.mainToolBar->addAction(act_apply);
 	ui.mainToolBar->addAction(act_clear);
-
-	combo_box_devs->resize(200, 40);
-	combo_box_filter->resize(300, 40);
 
 	// configure tablewidget style
 	ui.tableWidget->verticalHeader()->setVisible(false);     // Disable the row header
@@ -82,8 +75,8 @@ OpenSF::OpenSF(QWidget *parent, Qt::WFlags flags)
 	connect(act_apply, SIGNAL(triggered()), this, SLOT(apply_filter()));
 	connect(act_clear, SIGNAL(triggered()), this, SLOT(clear_filter()));
 
-
 	thread_mgr = new QThread(this);
+	capture = NULL;
 	index = 0;    // pkt_num index initial 
 }
 
@@ -100,7 +93,13 @@ void OpenSF::apply_filter()
 		return;
 	}
 
+	// filter history
 	filter = combo_box_filter->currentText();
+	if(combo_box_filter->count() >= 5){
+		combo_box_filter->removeItem(4);
+	}
+	combo_box_filter->insertItem(0, filter);
+		
 	combo_box_filter->clearFocus();
 	act_apply->setDisabled(true);
 	act_clear->setEnabled(true);
@@ -164,7 +163,10 @@ void OpenSF::start_cap()
 				ui.tableWidget->removeRow(i);
 			}
 			ui.treeWidget->clear();
-			capture->deleteLater();    // delete old capture instance, especially for *pkts
+			if(capture != NULL){
+				capture->deleteLater();    // delete old capture instance, especially for *pkts
+				capture = NULL;
+			}
 		}
 		else {
 			act_stop->setChecked(true);
@@ -179,6 +181,7 @@ void OpenSF::start_cap()
 		return;
 	}
 
+	if(capture != NULL) delete capture;
 	capture = new cap_thread(alldevs, dev_num);
 	capture->set_status(true);
 	capture->set_filter(filter.toLatin1().data());
@@ -186,7 +189,7 @@ void OpenSF::start_cap()
 
 	QObject::connect(thread_mgr, SIGNAL(started()), capture, SLOT(pkt_cap()));
 	QObject::connect(capture, SIGNAL(cap(int)), this, SLOT(display(int)));
-	// QObject::connect(thread_mgr, SIGNAL(finished()), capture, SLOT(deleteLater()));
+	// QObject::connect(capture, SIGNAL(error(int)), this, SLOT(deleteLater()));
 	capture->moveToThread(thread_mgr);
 
 	// Starts an event loop, and emits started() signal
@@ -207,6 +210,15 @@ void OpenSF::stop_cap()
 // display packet's basic infomations in tablewidget as list
 void OpenSF::display(int pkt_num)
 {
+	// handle exception
+	if(pkt_num < 0){
+		QMessageBox::critical(this, "OpenSF", QString(capture->errbuf));
+		cout << pkt_num << endl;
+		act_start->setChecked(false);
+		this->stop_cap();
+		return;
+	}
+
 	QString time_stamp;
 	QString src;
 	QString dst;
@@ -222,7 +234,14 @@ void OpenSF::display(int pkt_num)
 	icmp_payload *ic;
 	dns_payload *dp;
 
+
 	index = (vector<pkt_info>::size_type)pkt_num;
+	if(index == 0) {
+		cout << (*pkts)[index].timestr << endl;
+		cout << (*pkts)[index].timestr << endl;
+		cout << (*pkts)[index].timestr << endl;
+		cout << (*pkts)[index].timestr << endl;
+	}
 	time_stamp.sprintf("%s,%.6d", (*pkts)[index].timestr, (*pkts)[index].ms);
 	
 	// get mac header position
@@ -336,6 +355,7 @@ void OpenSF::display(int pkt_num)
 	ui.tableWidget->setItem(pkt_num, 4, new QTableWidgetItem(pro));
 	ui.tableWidget->setItem(pkt_num, 5, new QTableWidgetItem(QString::number((*pkts)[index].len)));
 	ui.tableWidget->setItem(pkt_num, 6, new QTableWidgetItem(info));
+	// ui.tableWidget->scrollToItem(ui.tableWidget->item(pkt_num, 0));     // automatically scroll down
 	
 	return;
 }
@@ -869,5 +889,5 @@ OpenSF::~OpenSF()
 	pcap_freealldevs(alldevs);
 	thread_mgr->quit();
 	delete thread_mgr;
-	delete capture;
+	if(capture != NULL) delete capture;
 }

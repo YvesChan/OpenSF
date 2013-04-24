@@ -1,7 +1,7 @@
 /********************************************************************************
 ** Form generated from reading UI file 'opensf.ui'
 **
-** Created: Tue Apr 23 18:57:58 2013
+** Created: Wed Apr 24 19:25:51 2013
 **      by: Qt User Interface Compiler version 4.8.1
 **
 ** WARNING! All changes made in this file will be lost when recompiling UI file!
@@ -16,11 +16,9 @@
 #include <QtGui/QButtonGroup>
 #include <QtGui/QHeaderView>
 #include <QtGui/QMainWindow>
-#include <QtGui/QMenuBar>
 #include <QtGui/QSplitter>
 #include <QtGui/QStatusBar>
 #include <QtGui/QTableWidget>
-#include <QtGui/QTextEdit>
 #include <QtGui/QToolBar>
 #include <QtGui/QTreeWidget>
 #include <QtGui/QWidget>
@@ -34,8 +32,6 @@ public:
     QSplitter *splitter;
     QTableWidget *tableWidget;
     QTreeWidget *treeWidget;
-    QTextEdit *textEdit;
-    QMenuBar *menuBar;
     QStatusBar *statusBar;
     QToolBar *mainToolBar;
 
@@ -77,14 +73,7 @@ public:
         treeWidget->setObjectName(QString::fromUtf8("treeWidget"));
         splitter->addWidget(treeWidget);
         treeWidget->header()->setVisible(false);
-        textEdit = new QTextEdit(splitter);
-        textEdit->setObjectName(QString::fromUtf8("textEdit"));
-        splitter->addWidget(textEdit);
         OpenSFClass->setCentralWidget(centralWidget);
-        menuBar = new QMenuBar(OpenSFClass);
-        menuBar->setObjectName(QString::fromUtf8("menuBar"));
-        menuBar->setGeometry(QRect(0, 0, 750, 23));
-        OpenSFClass->setMenuBar(menuBar);
         statusBar = new QStatusBar(OpenSFClass);
         statusBar->setObjectName(QString::fromUtf8("statusBar"));
         OpenSFClass->setStatusBar(statusBar);

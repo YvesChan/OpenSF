@@ -2,6 +2,7 @@
 #define OPENSF_H
 
 #include <QtGui/QMainWindow>
+#include <QtGui/QComboBox>
 #include <vector>
 
 #include "ui_opensf.h"

@@ -45,15 +45,17 @@ int cap_thread::pkt_cap()
 
 	// open device
 	if((adhandle = pcap_open(dev->name, 65535, PCAP_OPENFLAG_PROMISCUOUS, 1000, NULL, errbuf)) == NULL){
-		fprintf(stderr, "\nUnable to open adapter: %s\n", dev->name);
+		sprintf(errbuf, "Unable to open adapter: %s", dev->name);
+		emit cap(-1);
 		return -1;
 	}
 
 	// detect Ethernet
 	if(pcap_datalink(adhandle) != DLT_EN10MB)
     {
-		fprintf(stderr,"\nThis program works only on Ethernet networks.\n");
-		return -1;
+		sprintf(errbuf,"This program works only on Ethernet networks.");
+		emit cap(-2);
+		return -2;
     }
 
 	// get the device's first address
@@ -65,15 +67,17 @@ int cap_thread::pkt_cap()
 	// compile filter
 	if (pcap_compile(adhandle, &fcode, filter, 1, netmask) < 0 )
 	{
-		fprintf(stderr,"\nUnable to compile the packet filter. Check the syntax.\n");
-		return -1;
+		sprintf(errbuf,"Unable to compile the packet filter. Check the syntax.");
+		emit cap(-3);
+		return -3;
 	}
 
 	// set filter
     if (pcap_setfilter(adhandle, &fcode) < 0)
     {
-		fprintf(stderr,"\nError setting the filter.\n");
-		return -1;
+		sprintf(errbuf,"Error while setting the filter.");
+		emit cap(-4);
+		return -4;
     }
 
 	while((res = pcap_next_ex(adhandle, &header, &pkt_data)) >= 0){
@@ -104,9 +108,10 @@ int cap_thread::pkt_cap()
 		pkt_num ++;
 	}
     
-    if(res == -1){
-        printf("Error reading the packets: %s\n", pcap_geterr(adhandle));
-        return -1;
+	if(res == -1){
+		sprintf(errbuf, "Error reading the packets: %s", pcap_geterr(adhandle));
+		emit cap(-5);
+		return -5;
     }
 
 	return pkt_num;
@@ -114,5 +119,6 @@ int cap_thread::pkt_cap()
 
 cap_thread::~cap_thread()
 {
+	pcap_close(adhandle);
 	delete pkts;
 }
