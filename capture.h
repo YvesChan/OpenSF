@@ -16,10 +16,12 @@ class cap_thread : public QObject
 	Q_OBJECT
 
 public:
-	cap_thread(pcap_if_t *alldevs, int d_num);
+	cap_thread(vector<pkt_info> * pkt_list);
 	~cap_thread();
 	vector<pkt_info> * get_pkt_list();
 	void set_status(bool val);
+	void set_devlist(pcap_if_t * dl);
+	void set_devnum(int num);
 	void set_filter(char *str);
 	char errbuf[PCAP_ERRBUF_SIZE];
 

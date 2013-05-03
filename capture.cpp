@@ -2,21 +2,24 @@
 #include <cstdio>
 
 
-cap_thread::cap_thread(pcap_if_t *alldevs, int d_num)
+cap_thread::cap_thread(vector<pkt_info> * pkt_list)
 {
-	dev_list = alldevs;
-	dev_num = d_num;
-	pkts = new vector<pkt_info>();
+	pkts = pkt_list;
+}
+
+void cap_thread::set_devlist(pcap_if_t *dl)
+{
+	dev_list = dl;
+}
+
+void cap_thread::set_devnum(int num)
+{
+	dev_num = num;
 }
 
 void cap_thread::set_status(bool val)
 {
 	status = val;
-}
-
-vector<pkt_info> * cap_thread::get_pkt_list()
-{
-	return pkts;
 }
 
 void cap_thread::set_filter(char *str)
@@ -93,7 +96,6 @@ int cap_thread::pkt_cap()
 		time = header->ts.tv_sec;
 		ltime = localtime(&time);
 		strftime(timestr, sizeof(timestr), "%H:%M:%S", ltime);
-		// printf("%d: %s,%.6d  len:%d \n", pkt_num, timestr, header->ts.tv_usec, header->len);
 
 		struct pkt_info pkt;
 		strcpy(pkt.timestr, timestr);
@@ -114,11 +116,11 @@ int cap_thread::pkt_cap()
 		return -5;
     }
 
+	pcap_close(adhandle);
 	return pkt_num;
 }
 
 cap_thread::~cap_thread()
 {
-	pcap_close(adhandle);
-	delete pkts;
+	
 }

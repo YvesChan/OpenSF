@@ -12,6 +12,7 @@ OpenSF::OpenSF(QWidget *parent, Qt::WFlags flags)
 	: QMainWindow(parent, flags)
 {
 	ui.setupUi(this);
+	this->setCentralWidget(ui.splitter);
 
 	// resize tablewidget's rows to fit their content and forbid editing
 	ui.tableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -44,8 +45,8 @@ OpenSF::OpenSF(QWidget *parent, Qt::WFlags flags)
 	}
 
 	// initial toolbar
-	// combo_box_devs->resize(20, combo_box_devs->height());
-	// combo_box_filter->resize(20, combo_box_filter->height());
+	combo_box_devs->setMinimumSize(150, 25);
+	combo_box_filter->setFixedSize(150, 25);
 	ui.mainToolBar->addWidget(combo_box_devs);
 	ui.mainToolBar->addAction(act_start);
 	ui.mainToolBar->addAction(act_stop);
@@ -75,9 +76,14 @@ OpenSF::OpenSF(QWidget *parent, Qt::WFlags flags)
 	connect(act_apply, SIGNAL(triggered()), this, SLOT(apply_filter()));
 	connect(act_clear, SIGNAL(triggered()), this, SLOT(clear_filter()));
 
+	// initial capture thread
 	thread_mgr = new QThread(this);
-	capture = NULL;
-	index = 0;    // pkt_num index initial 
+	pkts = new vector<pkt_info>();
+	capture = new cap_thread(pkts);
+	connect(thread_mgr, SIGNAL(started()), capture, SLOT(pkt_cap()));
+	connect(capture, SIGNAL(cap(int)), this, SLOT(display(int)));
+	capture->moveToThread(thread_mgr);
+	index = 0;    // pkt_num index initial
 }
 
 void OpenSF::check_filter()
@@ -163,10 +169,6 @@ void OpenSF::start_cap()
 				ui.tableWidget->removeRow(i);
 			}
 			ui.treeWidget->clear();
-			if(capture != NULL){
-				capture->deleteLater();    // delete old capture instance, especially for *pkts
-				capture = NULL;
-			}
 		}
 		else {
 			act_stop->setChecked(true);
@@ -178,19 +180,15 @@ void OpenSF::start_cap()
 	int dev_num = combo_box_devs->currentIndex();
 	if(dev_num == 0){
 		QMessageBox::information(this, "OpenSF", "Please select a network interface");
+		act_start->setChecked(false);
 		return;
 	}
 
-	if(capture != NULL) delete capture;
-	capture = new cap_thread(alldevs, dev_num);
 	capture->set_status(true);
+	capture->set_devlist(alldevs);
+	capture->set_devnum(dev_num);
 	capture->set_filter(filter.toLatin1().data());
-	pkts = capture->get_pkt_list();     // get pkt_list address
-
-	QObject::connect(thread_mgr, SIGNAL(started()), capture, SLOT(pkt_cap()));
-	QObject::connect(capture, SIGNAL(cap(int)), this, SLOT(display(int)));
-	// QObject::connect(capture, SIGNAL(error(int)), this, SLOT(deleteLater()));
-	capture->moveToThread(thread_mgr);
+	pkts->clear();
 
 	// Starts an event loop, and emits started() signal
 	thread_mgr->start();
@@ -237,15 +235,15 @@ void OpenSF::display(int pkt_num)
 
 	index = (vector<pkt_info>::size_type)pkt_num;
 	if(index == 0) {
-		cout << (*pkts)[index].timestr << endl;
+		cout << pkts->at(index).timestr << endl;
 		cout << (*pkts)[index].timestr << endl;
 		cout << (*pkts)[index].timestr << endl;
 		cout << (*pkts)[index].timestr << endl;
 	}
-	time_stamp.sprintf("%s,%.6d", (*pkts)[index].timestr, (*pkts)[index].ms);
+	time_stamp.sprintf("%s,%.6d", pkts->at(index).timestr, (*pkts)[index].ms);
 	
 	// get mac header position
-	mh = (mac_header *)(*pkts)[index].pkt_data;
+	mh = (mac_header *)pkts->at(index).pkt_data;
 	u_short ftype = ntohs(mh->type);     // frame type, since it's two bytes, it needs to be transformed
 
 	switch(ftype){     // EtherType, see more:http://en.wikipedia.org/wiki/Ethertype
@@ -353,7 +351,7 @@ void OpenSF::display(int pkt_num)
 	ui.tableWidget->setItem(pkt_num, 2, new QTableWidgetItem(src));
 	ui.tableWidget->setItem(pkt_num, 3, new QTableWidgetItem(dst));
 	ui.tableWidget->setItem(pkt_num, 4, new QTableWidgetItem(pro));
-	ui.tableWidget->setItem(pkt_num, 5, new QTableWidgetItem(QString::number((*pkts)[index].len)));
+	ui.tableWidget->setItem(pkt_num, 5, new QTableWidgetItem(QString::number(pkts->at(index).len)));
 	ui.tableWidget->setItem(pkt_num, 6, new QTableWidgetItem(info));
 	// ui.tableWidget->scrollToItem(ui.tableWidget->item(pkt_num, 0));     // automatically scroll down
 	
@@ -369,30 +367,45 @@ void OpenSF::show_pkt(int row)
 	}
 
 	index = (vector<pkt_info>::size_type)row;
+	QTreeWidgetItem *pkt_in;	// packet info
 	QTreeWidgetItem *dll;		// data link layer
 	QTreeWidgetItem *nl;		// network layer
 	QTreeWidgetItem *tl;		// transport layer
 	QTreeWidgetItem *payload;	// datagram payload
 
+	// show pkt info
+	QString tmp;
+	tmp.sprintf("Frame: %d, %d Bytes on wire, %d Bytes captured", index, pkts->at(index).len, pkts->at(index).caplen);
+	pkt_in = new QTreeWidgetItem(ui.treeWidget, QStringList(tmp));
+	tmp.sprintf("Arrival time: %s,%d", pkts->at(index).timestr, pkts->at(index).ms);
+	pkt_in->addChild(new QTreeWidgetItem(pkt_in, QStringList(tmp)));
+	tmp.sprintf("Frame number: %d", index);
+	pkt_in->addChild(new QTreeWidgetItem(pkt_in, QStringList(tmp)));
+	tmp.sprintf("Frame length: %d", pkts->at(index).len);
+	pkt_in->addChild(new QTreeWidgetItem(pkt_in, QStringList(tmp)));
+	tmp.sprintf("Capture length: %d", pkts->at(index).caplen);
+	pkt_in->addChild(new QTreeWidgetItem(pkt_in, QStringList(tmp)));
+	ui.treeWidget->insertTopLevelItem(0, pkt_in);
+
 	// show mac header and apr info(if exist)
-	mac_header *mh = (mac_header *)(*pkts)[index].pkt_data;
+	mac_header *mh = (mac_header *)pkts->at(index).pkt_data;
 	dll = prase_mac(mh);
-	ui.treeWidget->insertTopLevelItem(0, dll);
+	ui.treeWidget->insertTopLevelItem(1, dll);
 	if(ntohs(mh->type) == 0x0806){       // ARP
 		arp_payload *ap = (arp_payload *)((u_char *)mh + 14);
 		payload = prase_arp(ap);
-		ui.treeWidget->insertTopLevelItem(1, payload);
+		ui.treeWidget->insertTopLevelItem(2, payload);
 		return;
 	}
 
 	// show ip header info
 	ip_header *ih = (ip_header *)((u_char*)mh + 14);
 	nl = prase_ip(ih);
-	ui.treeWidget->insertTopLevelItem(1, nl);
+	ui.treeWidget->insertTopLevelItem(2, nl);
 	if(ih->proto == 1 || ih->proto == 2){    // ICMP & IGMP 
 		icmp_payload *ic = (icmp_payload *)((u_char *)ih + (ih->ver_ihl & 0xf) * 4);
 		payload = prase_icmp(ic);
-		ui.treeWidget->insertTopLevelItem(2, payload);
+		ui.treeWidget->insertTopLevelItem(3, payload);
 		return;
 	}
 
@@ -400,18 +413,18 @@ void OpenSF::show_pkt(int row)
 	if(ih->proto == 6){     // TCP
 		tcp_header *th = (tcp_header *)((unsigned char *)ih + (ih->ver_ihl & 0xf) * 4);
 		tl = prase_tcp(th);
-		ui.treeWidget->insertTopLevelItem(2, tl);
+		ui.treeWidget->insertTopLevelItem(3, tl);
 	}
 	else if(ih->proto == 17){    // UDP
 		udp_header *uh = (udp_header *)((unsigned char *)ih + (ih->ver_ihl & 0xf) * 4);
 		tl = prase_udp(uh);
-		ui.treeWidget->insertTopLevelItem(2, tl);
+		ui.treeWidget->insertTopLevelItem(3, tl);
 
 		// tmp implement
 		if(ntohs(uh->dport) == 53 || ntohs(uh->sport) == 53){
 			dns_payload *dp = (dns_payload *)((u_char *)uh + 8);
 			payload = prase_dns(dp);
-			ui.treeWidget->insertTopLevelItem(3, payload);
+			ui.treeWidget->insertTopLevelItem(4, payload);
 		}
 	}
 
@@ -476,7 +489,8 @@ QTreeWidgetItem * OpenSF::prase_ip(ip_header *ih)
 	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
 
 	// first 1 bit reserved, remain 2 bits are DF & MF
-	tshort = (ih->flags_fo & 0xe000) >> 13;
+	tshort = ntohs(ih->flags_fo);
+	tshort = (tshort & 0x6000) >> 13;
 	tmp.sprintf("Flags: 0x%02X", tshort);
 	if(tshort == 1){
 		tmp += " (More Fragment)";
@@ -492,7 +506,7 @@ QTreeWidgetItem * OpenSF::prase_ip(ip_header *ih)
 	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
 
 	// ttl
-	tmp.sprintf("Time to live: %u", ih->ttl);
+	tmp.sprintf("Time to live: %d", ih->ttl);
 	ret->addChild(new QTreeWidgetItem(ret, QStringList(tmp)));
 
 	// protoco;l
